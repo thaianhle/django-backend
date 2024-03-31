@@ -1,0 +1,5 @@
+venv/
+requirements.txt
+**/**/migrations
+backend/.env.dev
+!**/**/migrations/__init__.py
