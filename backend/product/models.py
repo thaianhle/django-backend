@@ -13,16 +13,15 @@ from .serializers import ProductTypeSerializer
 #breakpoint()
 
 cache = {}
-class ProductFieldsJSON(models.JSONField):
+class ProductTypeJSONFIELDCUSTOM(models.JSONField):
     def from_db_value(self, value: Any, expression: Any, connection: Any) -> Any:
         db_val = super().from_db_value(value, expression, connection)
         if db_val is None:
             return ""
         
-        print("get db_val here: ", db_val)
-        print("get json db_val here:, ", db_val)
+        #print("get db_val here: ", db_val)
+        #print("get json db_val here:, ", db_val)
         return json.loads(db_val)
-      
       
 schema = {
   "type": "object",
@@ -73,29 +72,45 @@ schema = {
 }
 
 
-class ProductTypeManager(models.Manager):
-  id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-  def get_queryset(self) -> models.QuerySet:
-    return super().get_queryset()
-  def get(self, *args: Any, **kwargs: Any) -> Any:
-    if id not in cache:
-      cache[id] = super().get(*args, **kwargs)
-      print(f"add product type {id} into cache")
-    return cache[id]
-
 class ProductType(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     name = models.CharField(max_length=255)
-    properties = ProductFieldsJSON(null=False, default=None)
-    objects = ProductTypeManager()
+    properties = ProductTypeJSONFIELDCUSTOM(null=False, default=None)
+    product_schema_render = ProductTypeJSONFIELDCUSTOM(null=True, default=None)
     def save(self, *args, **kwargs):
         # before save transform for id
         properties = ProductTypeSerializer.model_validate(self.properties)
+        self.product_schema_render = json.dumps(self.construct_product_schema_render())
         self.properties = properties.get_model(transform_type="json")
         super(ProductType, self).save(*args, **kwargs)
-        cache[id] = self
-        print(cache)  
 
+    def construct_product_schema_render(self):
+      try:
+        properties = self.properties["properties"]
+        new_schema = product_schema.copy()
+        keys = new_schema["keys"]["properties"]["keys"]
+        for property in properties:
+          id = properties[property]["id"]
+          keys[str(id)] = {
+            "type": "string",
+            "title": property,
+            "choices": []
+          }
+          options = properties[property]
+          #print("options: ", options)
+          for option in options["options"]:
+            option_id = options["options"][option]["id"]
+            keys[str(id)]["choices"].append({
+              "title": option,
+              "value": str(option_id)
+            })
+            #print("keys: ", keys)
+        new_schema["keys"]["properties"]["keys"] = keys
+      except BaseException as err:
+        raise err
+      else:
+        return new_schema
+      
     def __str__(self):
       return self.name
 product_schema = {
@@ -104,16 +119,6 @@ product_schema = {
     "properties": {
       "type": "object",
       "keys": {
-        "1": {
-          "type": "string",
-          "title": "Color",
-          "choices": [
-             {
-                "title": "Blue",
-                "value": 1,
-             }
-          ]
-        }
       }    
     }
   }
@@ -134,7 +139,7 @@ class Product(models.Model):
     product_type = models.ForeignKey(ProductType, related_name='products', on_delete=models.CASCADE, 
     null=True, default=None)
     #added_properties = models.BooleanField(default=False)
-    properties = models.JSONField()
+    properties = models.JSONField(null=True, default=None)
 
 
 
@@ -146,38 +151,10 @@ class Product(models.Model):
     def dynamic_schema(self):
       return self.properties
     def save(self, *args, **kwargs):
-      if self.properties is None:
-        new_schema = self.get_new_schema_properties()
-        self.properties = json.dumps(new_schema)
+      print("properties: ", self.properties)
       
       super().save(*args, **kwargs)
 
-    def get_new_schema_properties(self):
-      try:
-        properties = self.product_type.properties["properties"]
-        new_schema = product_schema.copy()
-        keys = new_schema["keys"]["properties"]["keys"]
-        for property in properties:
-          id = properties[property]["id"]
-          keys[str(id)] = {
-            "type": "string",
-            "title": property,
-            "choices": []
-          }
-          options = properties[property]
-          #print("options: ", options)
-          for option in options["options"]:
-            option_id = options["options"][option]["id"]
-            keys[str(id)]["choices"].append({
-              "title": option,
-              "value": str(option_id)
-            })
-            #print("keys: ", keys)
-        new_schema["keys"]["properties"]["keys"] = keys
-      except:
-        pass
-      else:
-        #print("call new schema product type successed")
-        return new_schema
+    
 
     

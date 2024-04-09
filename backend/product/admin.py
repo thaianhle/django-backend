@@ -21,9 +21,11 @@ import json
 # Register your models here.
 
 class ProductTypeChangeForm(forms.ModelForm):
+  class Meta:
+    ProductType
+    fields = ["name", "properties"]
   name = forms.CharField(max_length=255)
   properties = forms.JSONField(widget=JSONFormWidget(schema=schema))
-
   def __init__(self, *args, **kwargs):
     super(ProductTypeChangeForm, self).__init__(*args, **kwargs)
     self.__important_fields = ['name', 'properties']
@@ -87,16 +89,18 @@ class ProductTypeAdmin(admin.ModelAdmin):
 
 from django.conf import settings
 def dynamic_admin_fields(form: forms.ModelForm, obj) -> dict:
-  
-  return json.loads(obj.properties)
+  return obj.product_schema_render
 
 class ProductForm(forms.ModelForm):
   def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
-    v = dynamic_admin_fields(self, self.instance)
-    self.base_fields["properties"] = forms.JSONField(widget=JSONFormWidget(schema=v))
-    self.fields["properties"] = forms.JSONField(widget=JSONFormWidget(schema=v))
-    
+    try:
+      v = dynamic_admin_fields(self, self.instance.product_type)
+      self.base_fields["properties"] = forms.JSONField(widget=JSONFormWidget(schema=v))
+      self.fields["properties"] = forms.JSONField(widget=JSONFormWidget(schema=v))
+    except BaseException as err:
+      print("error dynamic admin fields: ", err)
+      pass
 
   class Meta:
     model = Product
@@ -105,8 +109,11 @@ class ProductForm(forms.ModelForm):
 class ProductAdmin(admin.ModelAdmin):
   form = ProductForm
   
-  #def get_form(self, request, obj, change=False, **kwargs):
-  #  return ProductForm
+  def get_fields(self, request: HttpRequest, obj: Any) -> Sequence[Callable[..., Any] | str]:
+    fields = super().get_fields(request, obj)
+    if not obj:
+      fields.remove("properties")
+    return fields
   def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
     query = super().get_queryset(request)
     v = query.select_related("product_type")
@@ -115,6 +122,7 @@ class ProductAdmin(admin.ModelAdmin):
   def get_product_type_name(self, obj):
     return obj.product_type.name
     
+  
 
   get_product_type_name.short_description = "Type Product"
   list_display = [
@@ -125,6 +133,10 @@ class ProductAdmin(admin.ModelAdmin):
 
   autocomplete_fields = [
     "product_type"
+  ]
+  
+  search_fields = [
+    "name"
   ]
 
   pass
