@@ -23,4 +23,9 @@ urlpatterns = [
     path('api/properties/', include('property.urls')),
     path('api/auth/', include('user.urls')),
     path('api/product_type/', include('product.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
+
+if settings.DEBUG is False:
+  urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+  #print(urlpatterns)
+

@@ -22,12 +22,20 @@ runserver() {
 ENV_TYPE=dev python manage.py runserver
 }
 
+run_max_uvicorn() {
+ENV_TYPE=dev python -m gunicorn core.asgi:application -w 4 -k uvicorn.workers.UvicornWorker
+}
+
 createsuperuser() {
 ENV_TYPE=dev python manage.py createsuperuser
 }
 
 shell() {
 ENV_TYPE=dev python manage.py shell
+}
+
+collect_static() {
+ENV_TYPE=dev python manage.py collectstatic
 }
 
 $@

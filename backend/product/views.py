@@ -1,5 +1,7 @@
+import asyncio
 from django.shortcuts import render
-from rest_framework.decorators import api_view, authentication_classes, permission_classes, renderer_classes
+from rest_framework.decorators import authentication_classes, permission_classes, renderer_classes
+from adrf.decorators import api_view
 from pydantic import ValidationError
 from django.http import JsonResponse
 from rest_framework.response import Response
@@ -12,6 +14,8 @@ from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 from collections import deque
 from pydantic import BaseModel
+from asgiref.sync import sync_to_async
+from .models import Product
 # Create your views here.
 
 class CustomRenderer(renderers.JSONRenderer):
@@ -24,10 +28,10 @@ class CustomRenderer(renderers.JSONRenderer):
 @authentication_classes([])
 @permission_classes([])
 @renderer_classes([CustomRenderer])
-def create_product_type(request):
+async def create_product_type(request):
 
     try:
-        product_type_request = ProductTypeSerializer(**request.data)
+        product_type_request = await ProductTypeSerializer(**request.data)
         fields = product_type_request.transform_and_to_json()
     except ValidationError as err:
         print(err)
@@ -39,5 +43,25 @@ def create_product_type(request):
     product_type_request.id = product_type.id
     return Response(data=product_type_request, status=200)
 
-
-
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([])
+@renderer_classes([CustomRenderer])
+async def get_product_by_id(request, product_id):
+  try:
+    #await asyncio.sleep(0.1)
+    product = await get_product(product_id)
+  except BaseException as err:
+    #print("error: ", err)
+    pass
+  else:
+    #print("product data: ", product)
+    return Response(data=product, status=200)
+  
+cache = {}
+lock = asyncio.Lock()
+@sync_to_async  
+def get_product(product_id):
+  if product_id not in cache:
+    cache[product_id] = Product.objects.get(id=product_id)
+  return cache[product_id]

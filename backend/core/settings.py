@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from django.conf.global_settings import CSRF_COOKIE_SECURE, SECURE_SSL_REDIRECT, SESSION_COOKIE_SECURE, STATICFILES_DIRS
 import environ
 import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -28,13 +29,16 @@ if ENV_TYPE == "prod":
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zdrp0wc@p-*^6%b9_#ug3_2v%0!-(v5ng8#u*l&rf-5cvm)!#l'
+SECRET_KEY = '/wIgCPRUGlGMYakNVuOcC2#<#~F`yiLFg5LPFJD=.a!KtJF_;$c_UZ}=OH#,QO6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = False
 
 # Application definition
 
@@ -45,7 +49,7 @@ INSTALLED_APPS = [
     "unfold.contrib.forms",  # optional, if special form elements are needed
     #"unfold.contrib.import_export",  # optional, if django-import-export package is used
     #"unfold.contrib.guardian",  # optional, if django-guardian package is used
-    #"unfold.contrib.simple_history",  # optional, if django-simple-history package is used
+    "unfold.contrib.simple_history",  # optional, if django-simple-history package is used
     #'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -65,6 +69,7 @@ INSTALLED_APPS = [
 
     #'dj_rest_auth',
     #'dj_rest_auth.registration'
+    'adrf',
     'django_jsonform',
     'user',
     'property',
@@ -73,6 +78,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -124,8 +130,8 @@ DATABASES = {
         'PORT': os.environ.get("DB_PORT"),
         'POOL_OPTIONS': {
             'POOL_SIZE': 10,
-            'MAX_OVER_FLOW': 10,
-            #'RECYCLE': '60*60',
+            'MAX_OVER_FLOW': 0,
+            'RECYCLE': 24*60*60,
         }
     }
 }
@@ -233,3 +239,8 @@ JAZZMIN_SETTINGS = {
 #        },
 #    },
 #}
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, '../venv/unfold/static/')]
+#print(STATIC_ROOT)
